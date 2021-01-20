@@ -10,9 +10,19 @@
   "dependencies": {
     "express": "^4.17.1",
     "express-generator": "^4.16.1",
+    "faker": "^5.1.0",
     "mongodb": "^3.6.3",
-    "mongoose": "^5.11.12"
+    "mongoose": "^5.11.12",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {},
-  "description": ""
+  "description": "restful-api-application",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sametkamgul/restful-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sametkamgul/restful-api/issues"
+  },
+  "homepage": "https://github.com/sametkamgul/restful-api#readme"
 }
