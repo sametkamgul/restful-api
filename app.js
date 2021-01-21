@@ -74,6 +74,7 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(bodyParser.json());
 var result
+global.rank;
 
 
 // get top three datas
@@ -109,11 +110,11 @@ app.get("/leaderboard", (req, res, next) => {
         if (err) throw err;
         var dbo = db.db("game-x");
         var mysort = { points: -1 };       // descending order
-        dbo.collection("users").find().sort(mysort).limit(3).toArray(function(err, result) {
+        dbo.collection("users").find({}, {projection: {_id:0, points:1, display_name:1, country:1}}).sort(mysort).limit(3).toArray(function(err, result) {
           if (err) throw err;
           console.log(result);
           db.close();
-          res.status(200).json(result);
+          res.json(result);
         });
       });
 });
@@ -124,7 +125,7 @@ app.get("/leaderboard/:country_iso_code", (req, res, country_iso_code) => {
       if (err) throw err;
       var dbo = db.db("game-x");
       var mysort = { points: -1 };       // descending order
-      dbo.collection("users").find({"country": req.params.country_iso_code}).sort(mysort).limit(3).toArray(function(err, result) {
+      dbo.collection("users").find({"country": req.params.country_iso_code}, {projection: {_id:0, points:1, display_name:1, country:1}}).sort(mysort).limit(3).toArray(function(err, result) {
         if (err) throw err;
         res.json(result); //TODO: add a null check here
         db.close();
@@ -165,22 +166,82 @@ app.post("/score/submit", (req, res) => {
 // GET /user/profile/{guid}
 // this returns the user profile info
 app.get("/user/profile/:guid", (req, res, next) => {
-  console.log(req.params.guid );  // debug print
+  console.log("guid: " + req.params.guid );  // debug print
+  var playerScore
   MongoClient.connect(url, function(err, db) {
     if (err) throw err;
     var dbo = db.db("game-x");
-    dbo.collection("users").find({"user_id" : req.params.guid}).toArray(function(err, result){
-      if (err) {
-        return res.status(404).send({
-          message: "The resource cannot be found: " + res.params.guid
-        });
-      } else {
-        res.status(200).json(result);
-      }
+    var mysort = {points: -1};
+    dbo.collection("users").find({"user_id" : req.params.guid}, {projection: {_id:0, user_id:1, points:1, display_name:1}}).sort(mysort).limit(1).toArray(function(err, result){
+      if (err) throw err;
       db.close();
+      result = result[0];
+      playerScore = result.points;
+      res.json(result);
+    });
+    
+  });
+  // playerScore = result.points;
+  // MongoClient.connect(url, function(err, db) {
+  //   if (err) throw err;
+  //   var dbo = db.db("game-x");
+  //   //console.log(req.body.points);
+  //   var pipeline = [
+  //     {
+  //       $match: {
+  //         points: {
+  //           $gt: playerScore
+  //         }
+  //       }
+  //     },
+  //     {
+  //       $count: "passing_scores"
+  //     }
+  //   ];
+  //   dbo.collection("users").aggregate(pipeline).toArray(function (err, response) {
+  //     result = response[0].passing_scores;
+  //     console.log(response[0].passing_scores);
+  //     rank = result;
+  //     return rank;
+  //     //FIXME: passing value problem
+  //   });
+  //   res.json(result);
+  // });
+  
+});
+
+
+
+
+
+// getting the rank of player by its score
+function getRankofPlayer(playerScore) {
+  console.log("search score: " + playerScore);
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("game-x");
+    //console.log(req.body.points);
+    var pipeline = [
+      {
+        $match: {
+          points: {
+            $gt: playerScore
+          }
+        }
+      },
+      {
+        $count: "passing_scores"
+      }
+    ];
+    dbo.collection("users").aggregate(pipeline).toArray(function (err, res) {
+      result = res[0].passing_scores;
+      console.log(res[0].passing_scores);
+      var rank = result;
+      //FIXME: passing value problem
     });
   });
-});
+};
+
 
 // POST /user/create
 // this creates a new user
@@ -198,12 +259,16 @@ app.post("/user/create", (req, res, next) => {
     result.timestamp = epoch; // add to JSON
     dbo.collection("users").insertOne(result, function (err, res) {
       if (err) throw err;
-      console.log("user is created.");
-      console.log(result);
-      res.status(404).send("The resource cannot be found");
-      db.close();
+      //console.log("user is created.");
+      //console.log(result);
+     
     });
-    res.status(200).json(result);
+    dbo.collection("users").findOne({"user_id" : result.user_id}, {projection: {_id:0, user_id:1, points:1, display_name:1}}, (function(err, result){
+      if (err) throw err;
+      db.close();
+      console.log(result);
+      res.json(result);
+    }));
   });
 });
 
@@ -211,3 +276,5 @@ app.post("/user/create", (req, res, next) => {
 app.get("*", (req, res) => {
   res.status(404).json("The resource cannot be found");
 });
+
+
