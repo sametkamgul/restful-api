@@ -1,6 +1,9 @@
 var express = require("express");
 var app = express();
 var bodyParser = require("body-parser");
+const EventEmitter = require('events');
+class MyEmitter extends EventEmitter {}
+
 
 // var MongoClient = require('mongodb').MongoClient;
 // var url = "mongodb://localhost:27017/website";
@@ -66,6 +69,7 @@ var bodyParser = require("body-parser");
 
 
 var MongoClient = require('mongodb').MongoClient;
+const { json } = require("express");
 var url = "mongodb://localhost:27017/";
 
 // configuring bodyParser
@@ -177,45 +181,16 @@ app.get("/user/profile/:guid", (req, res, next) => {
       db.close();
       result = result[0];
       playerScore = result.points;
-      res.json(result);
+      result.rank = playerScore;
+      //res.json(result);
+      console.log(result);
     });
-    
   });
-  // playerScore = result.points;
-  // MongoClient.connect(url, function(err, db) {
-  //   if (err) throw err;
-  //   var dbo = db.db("game-x");
-  //   //console.log(req.body.points);
-  //   var pipeline = [
-  //     {
-  //       $match: {
-  //         points: {
-  //           $gt: playerScore
-  //         }
-  //       }
-  //     },
-  //     {
-  //       $count: "passing_scores"
-  //     }
-  //   ];
-  //   dbo.collection("users").aggregate(pipeline).toArray(function (err, response) {
-  //     result = response[0].passing_scores;
-  //     console.log(response[0].passing_scores);
-  //     rank = result;
-  //     return rank;
-  //     //FIXME: passing value problem
-  //   });
-  //   res.json(result);
-  // });
-  
 });
 
-
-
-
-
 // getting the rank of player by its score
-function getRankofPlayer(playerScore) {
+async function getRankofPlayer(playerScore) {
+  var passing_scores;
   console.log("search score: " + playerScore);
   MongoClient.connect(url, function(err, db) {
     if (err) throw err;
@@ -236,7 +211,9 @@ function getRankofPlayer(playerScore) {
     dbo.collection("users").aggregate(pipeline).toArray(function (err, res) {
       result = res[0].passing_scores;
       console.log(res[0].passing_scores);
-      var rank = result;
+      //result.rank = res[0].passing_scores;
+      console.log("test");
+      return Promise.resolve(result);
       //FIXME: passing value problem
     });
   });
