@@ -5,104 +5,17 @@ const EventEmitter = require('events');
 class MyEmitter extends EventEmitter {}
 
 
-// var MongoClient = require('mongodb').MongoClient;
-// var url = "mongodb://localhost:27017/website";
-
-// MongoClient.connect(url, function(err, db) {
-//   if (err) throw err;
-//   console.log("Database created!");
-//   db.close();
-// });
-
-// MongoClient.connect(url, function(err, db) {
-//     if (err) throw err;
-//     var dbo = db.db("website");
-//     var myobj = { name: "Company Inc", address: "Highway 37" };
-//     dbo.collection("posts").insertOne(myobj, function(err, res) {
-//         if (err) throw err;
-//         console.log("1 document inserted");
-//         db.close();
-//     });
-// });
-
-// MongoClient.connect(url, function(err, db) {
-// if (err) throw err;
-// var dbo = db.db("website");
-// dbo.collection("posts").findOne({}, function(err, result) {
-//     if (err) throw err;
-//     console.log(result.name);
-//     db.close();
-// });
-// });
-
-// MongoClient.connect(url, function(err, db) {
-//     if (err) throw err;
-//     var dbo = db.db("website");
-//     dbo.collection("posts").find({}).toArray(function(err, result) {
-//       if (err) throw err;
-//       console.log(result);
-//       db.close();
-//     });
-//   });
-
-//   MongoClient.connect(url, function(err, db) {
-//     if (err) throw err;
-//     var dbo = db.db("website");
-//     dbo.collection("posts").find({}, { projection: { _id: 0} }).toArray(function(err, result) {
-//       if (err) throw err;
-//       console.log(result);
-//       db.close();
-//     });
-//   });
-
-
-//   MongoClient.connect(url, function(err, db) {
-//     if (err) throw err;
-//     var dbo = db.db("website");
-//     var query = { Student_Name: "Samet" };
-//     dbo.collection("users").find(query).toArray(function(err, result) {
-//       if (err) throw err;
-//       console.log(result);
-//       db.close();
-//     });
-//   });
-
-
 var MongoClient = require('mongodb').MongoClient;
 const { json } = require("express");
+const { rejects } = require("assert");
 var url = "mongodb://localhost:27017/";
-
+//var result;
+var rank;
 // configuring bodyParser
 app.use(bodyParser.urlencoded({
   extended:true
 }));
 app.use(bodyParser.json());
-var result
-global.rank;
-
-
-// get top three datas
-
-// MongoClient.connect(url, function(err, db) {
-//   if (err) throw err;
-//   var dbo = db.db("website");
-//   var mysort = { Age: -1 };
-//   dbo.collection("users").find().sort(mysort).limit(3).toArray(function(err, result) {
-//     if (err) throw err;
-//     console.log(result);
-//     db.close();
-//   });
-// });
-
-
-// MongoDB structure:
-// {
-//   "user_id" : "ered-ere-ddd-e",
-//   "display_name ": "samet",
-//   "points" : 0,
-//   "country" : "tr",
-//   "timestamp" : 593939
-// }
 
 app.listen(3000, () => {
     console.log("Server runs on port 3000");
@@ -110,18 +23,39 @@ app.listen(3000, () => {
 
 // returns the leaderboard - 3 gamers
 app.get("/leaderboard", (req, res, next) => {
-    MongoClient.connect(url, function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("game-x");
-        var mysort = { points: -1 };       // descending order
-        dbo.collection("users").find({}, {projection: {_id:0, points:1, display_name:1, country:1}}).sort(mysort).limit(3).toArray(function(err, result) {
-          if (err) throw err;
-          console.log(result);
-          db.close();
-          res.json(result);
-        });
-      });
+  var result;
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("game-x");
+    var mysort = { points: -1 };       // descending order
+    dbo.collection("users").find({}, {projection: {_id:0, points:1, display_name:1, country:1}}).sort(mysort).limit(3).toArray(function(err, _result) {
+      if (err) throw err;
+      console.log(_result);
+      result = _result;
+      db.close();
+      res.json(result);
+    });
+  });
 });
+
+async function getTopPlayers() {
+  var result;
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("game-x");
+    var mysort = { points: -1 };       // descending order
+    dbo.collection("users").find({}, {projection: {_id:0, points:1, display_name:1, country:1}}).sort(mysort).limit(3).toArray(function(err, _result) {
+      if (err) throw err;
+      console.log(_result);
+      result = _result;
+      //getRankofPlayer(result[0].points);
+      db.close();
+      //res.json(result);
+      new Promise((resolve, reject) => setTimeout(resolve, 100));
+    });
+  });
+  return result;
+}
 
 // returns the leaderboard by country iso code
 app.get("/leaderboard/:country_iso_code", (req, res, country_iso_code) => {
@@ -171,31 +105,35 @@ app.post("/score/submit", (req, res) => {
 // this returns the user profile info
 app.get("/user/profile/:guid", (req, res, next) => {
   console.log("guid: " + req.params.guid );  // debug print
-  var playerScore
+  var playerScore;
   MongoClient.connect(url, function(err, db) {
     if (err) throw err;
     var dbo = db.db("game-x");
-    var mysort = {points: -1};
-    dbo.collection("users").find({"user_id" : req.params.guid}, {projection: {_id:0, user_id:1, points:1, display_name:1}}).sort(mysort).limit(1).toArray(function(err, result){
-      if (err) throw err;
-      db.close();
-      result = result[0];
-      playerScore = result.points;
-      result.rank = playerScore;
-      //res.json(result);
-      console.log(result);
+    dbo.collection("users").findOne({"user_id" : req.params.guid}, {projection: {_id:0, user_id:1, points:1, display_name:1}}).then((value) => {
+      getRankofPlayer(value.points).then(function(rank){
+        value.rank = rank + 1;
+        res.json(value);
+      });
     });
-  });
+    
+    // dbo.collection("users").find({"user_id" : req.params.guid}, {projection: {_id:0, user_id:1, points:1, display_name:1}}).sort(mysort).limit(1).toArray(function(err, result){
+      //   if (err) throw err;
+      //   db.close();
+      //   result = result[0];
+      //   playerScore = result.points;
+      //   console.log(result);
+      // });
+    });
 });
 
 // getting the rank of player by its score
 async function getRankofPlayer(playerScore) {
-  var passing_scores;
+  var rank;
+ 
   console.log("search score: " + playerScore);
   MongoClient.connect(url, function(err, db) {
     if (err) throw err;
     var dbo = db.db("game-x");
-    //console.log(req.body.points);
     var pipeline = [
       {
         $match: {
@@ -208,15 +146,15 @@ async function getRankofPlayer(playerScore) {
         $count: "passing_scores"
       }
     ];
-    dbo.collection("users").aggregate(pipeline).toArray(function (err, res) {
-      result = res[0].passing_scores;
-      console.log(res[0].passing_scores);
-      //result.rank = res[0].passing_scores;
-      console.log("test");
-      return Promise.resolve(result);
+    dbo.collection("users").aggregate(pipeline).toArray(function(err, res) {
+      rank = res[0].passing_scores;
       //FIXME: passing value problem
     });
+
   });
+  await new Promise((resolve, reject) => setTimeout(resolve, 100));
+  console.log("return: " + rank);
+  return rank;
 };
 
 
